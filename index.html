@@ -56,12 +56,18 @@ speechSynthesis.onvoiceschanged = loadVoices;
 
 function speak(text) {
     const u = new SpeechSynthesisUtterance(text);
+    const voices = speechSynthesis.getVoices();
+
+    u.voice = voices.find(v => v.lang === "tr-TR") 
+           || voices.find(v => v.lang.startsWith("tr"));
+
     u.lang = "tr-TR";
-    if (turkishVoice) u.voice = turkishVoice;
-u.rate = 0.75;    
-speechSynthesis.cancel();
+    u.rate = 0.75;
+
+    speechSynthesis.cancel();
     speechSynthesis.speak(u);
 }
+
 function getLogicalSentences() {
     return [
         {c:"Ben her sabah okulda Türkçe dersini dikkatle dinliyorum", s:"Cada mañana escucho atentamente la clase de turco en la escuela", g:"Locativo + acusativo"},

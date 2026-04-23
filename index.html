@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Türkçe Öğrenme Oyunu</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #eef2f3; display: flex; justify-content: center; padding: 20px; }
+        .game-card { background: white; width: 100%; max-width: 650px; padding: 40px; border-radius: 20px; box-shadow: 0 15px 35px rgba(0,0,0,0.1); text-align: center; }
+        .word { display: inline-block; margin: 6px; padding: 12px 20px; background: #f8f9fa; border: 2px solid #dee2e6; cursor: pointer; border-radius: 10px; font-weight: 600; transition: all 0.2s; color: #495057; }
+        .word:hover { border-color: #3498db; background: #e3f2fd; transform: translateY(-2px); }
+        #answer-zone { min-height: 70px; margin: 30px 0; padding: 15px; border: 2px dashed #3498db; border-radius: 12px; font-size: 24px; color: #2c3e50; display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 5px; }
+        .controls { display: flex; gap: 15px; justify-content: center; margin-top: 20px; }
+        button { padding: 12px 25px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 16px; transition: 0.3s; }
+        .check-btn { background: #27ae60; color: white; }
+        .next-btn { background: #3498db; color: white; }
+        .undo-btn { background: #95a5a6; color: white; }
+        button:hover { opacity: 0.9; transform: scale(1.05); }
+        #info-box { margin-top: 30px; padding: 20px; background: #f1f9ff; border-radius: 12px; display: none; text-align: left; animation: fadeIn 0.5s; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    </style>
+</head>
+<body>
+
+<div class="game-card">
+    <h2 style="color: #2c3e50; margin-bottom: 30px;">Cümleyi düzenle</h2>
+
+    <div id="words-container"></div>
+    <div id="answer-zone"></div>
+
+    <div class="controls">
+        <button class="undo-btn" onclick="resetCurrent()">Geri</button>
+        <button class="check-btn" onclick="check()">Kontrol et</button>
+        <button class="next-btn" onclick="loadNewGame()">Sonraki</button>
+    </div>
+
+    <div id="info-box">
+        <div id="result-msg" style="font-size: 20px; font-weight: bold; margin-bottom: 10px;"></div>
+        <div style="color: #2980b9; font-weight: bold;">Original: <span id="correct-text"></span></div>
+        <div style="color: #7f8c8d; font-style: italic; margin-bottom: 15px;">Traducción: <span id="trans-text"></span></div>
+        <div id="grammar-text" style="font-size: 14px; color: #34495e; border-top: 1px solid #d1d8e0; padding-top: 10px;"></div>
+    </div>
+</div>
+
+<script>
+let turkishVoice = null;
+
+function loadVoices() {
+    const voices = speechSynthesis.getVoices();
+    turkishVoice = voices.find(v => v.lang.startsWith("tr"));
+}
+
+speechSynthesis.onvoiceschanged = loadVoices;
+
+function speak(text) {
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = "tr-TR";
+    if (turkishVoice) u.voice = turkishVoice;
+u.rate = 0.75;    
+speechSynthesis.cancel();
+    speechSynthesis.speak(u);
+}
+function getLogicalSentences() {
+    return [
+        {c:"Ben her sabah okulda Türkçe dersini dikkatle dinliyorum", s:"Cada mañana escucho atentamente la clase de turco en la escuela", g:"Locativo + acusativo"},
+        {c:"Çocuklar parkta büyük kırmızı topu oynuyor", s:"Los niños juegan con la pelota roja grande en el parque", g:"Locativo + acusativo"},
+        {c:"Annem mutfakta lezzetli yemeği pişiriyor", s:"Mi madre cocina comida deliciosa en la cocina", g:"Locativo + acusativo"},
+        {c:"Biz akşamları evde televizyonu izliyoruz", s:"Vemos la televisión en casa por la noche", g:"Locativo + acusativo"},
+        {c:"O sabahları hızlıca okula gidiyor", s:"Va rápido a la escuela por la mañana", g:"Dativo"},
+        {c:"Ben pazardan taze ekmeği alıyorum", s:"Compro pan fresco en el mercado", g:"Ablativo + acusativo"},
+        {c:"Öğretmen sınıfta yeni kelimeleri yazıyor", s:"El profesor escribe palabras nuevas en clase", g:"Locativo + acusativo"},
+        {c:"Arkadaşım bana yeni kitabı veriyor", s:"Mi amigo me da el libro nuevo", g:"Dativo + acusativo"},
+        {c:"Biz parkta uzun süre yürüyoruz", s:"Caminamos mucho en el parque", g:"Locativo"},
+        {c:"O evde sessizce kitabı okuyor", s:"Lee el libro en casa en silencio", g:"Locativo + acusativo"},
+
+        {c:"Ben otobüste müzik dinliyorum", s:"Escucho música en el autobús", g:"Locativo"},
+        {c:"Öğrenciler kütüphanede ders çalışıyor", s:"Estudian en la biblioteca", g:"Locativo"},
+        {c:"Ben her gün işe otobüsle gidiyorum", s:"Voy al trabajo cada día", g:"Dativo"},
+        {c:"O akşamları filmi izliyor", s:"Ve la película por la noche", g:"Acusativo"},
+        {c:"Biz hafta sonu sinemaya gidiyoruz", s:"Vamos al cine el fin de semana", g:"Dativo"},
+        {c:"Ben yeni telefonu kullanıyorum", s:"Uso el teléfono nuevo", g:"Acusativo"},
+        {c:"O kırmızı elmayı yiyor", s:"Come la manzana roja", g:"Acusativo"},
+        {c:"Biz pazardan sebzeleri alıyoruz", s:"Compramos verduras en el mercado", g:"Ablativo + acusativo"},
+        {c:"Ben arkadaşımı okulda bekliyorum", s:"Espero a mi amigo en la escuela", g:"Acusativo"},
+        {c:"O evde yalnız kalıyor", s:"Se queda solo en casa", g:"Locativo"},
+
+        {c:"Biz yazın denizde yüzüyoruz", s:"Nadamos en el mar en verano", g:"Locativo"},
+        {c:"Ben kışın sıcak çayı içiyorum", s:"Bebo té caliente en invierno", g:"Acusativo"},
+        {c:"O çok güzel şarkıyı söylüyor", s:"Canta una canción muy bonita", g:"Acusativo"},
+        {c:"Ben hızlıca yazıyorum", s:"Escribo rápido", g:"Adverbio"},
+        {c:"Biz yavaşça konuşuyoruz", s:"Hablamos despacio", g:"Adverbio"},
+        {c:"O çok dikkatli çalışıyor", s:"Trabaja con atención", g:"Adverbio"},
+        {c:"Ben bugün biraz yorgunum", s:"Estoy un poco cansado hoy", g:"Tiempo"},
+        {c:"O çok mutlu görünüyor", s:"Parece muy feliz", g:"Adjetivo"},
+        {c:"Biz uzun yolu yürüyoruz", s:"Caminamos el camino largo", g:"Acusativo"},
+        {c:"Ben küçük evde yaşıyorum", s:"Vivo en una casa pequeña", g:"Locativo"},
+
+        {c:"O büyük şehirde çalışıyor", s:"Trabaja en la ciudad grande", g:"Locativo"},
+        {c:"Biz yeni arabayı görüyoruz", s:"Vemos el coche nuevo", g:"Acusativo"},
+        {c:"Ben okulda Türkçeyi öğreniyorum", s:"Aprendo turco en la escuela", g:"Acusativo"},
+        {c:"O evde yemeği pişiriyor", s:"Cocina en casa", g:"Acusativo"},
+        {c:"Biz parkta çocuklarla oynuyoruz", s:"Jugamos con niños", g:"Locativo"},
+        {c:"Ben arkadaşlarımla buluşuyorum", s:"Me encuentro con amigos", g:"Instrumental"},
+        {c:"O sinemada filmi izliyor", s:"Ve la película en el cine", g:"Locativo"},
+        {c:"Biz yaz tatilinde seyahat ediyoruz", s:"Viajamos en verano", g:"Tiempo"},
+        {c:"Ben sabah kahvaltıda ekmeği yiyorum", s:"Desayuno pan", g:"Acusativo"},
+        {c:"O akşamları kitabı okuyor", s:"Lee el libro por la noche", g:"Acusativo"},
+
+        {c:"Biz hafta içi çalışıyoruz", s:"Trabajamos entre semana", g:"Tiempo"},
+        {c:"Ben hafta sonu dinleniyorum", s:"Descanso el fin de semana", g:"Tiempo"},
+        {c:"O hızlı arabayı kullanıyor", s:"Conduce el coche rápido", g:"Acusativo"},
+        {c:"Ben yeni cüzdanı alıyorum", s:"Compro la cartera nueva", g:"Acusativo"},
+        {c:"Biz güzel bahçede oturuyoruz", s:"Nos sentamos en el jardín bonito", g:"Locativo"},
+        {c:"O büyük problemi çözüyor", s:"Resuelve el problema", g:"Acusativo"},
+        {c:"Ben küçük defteri kullanıyorum", s:"Uso el cuaderno pequeño", g:"Acusativo"},
+        {c:"Biz uzun toplantıya katılıyoruz", s:"Asistimos a reunión larga", g:"Dativo"},
+        {c:"O okuldan eve yürüyor", s:"Va de escuela a casa", g:"Ablativo + dativo"},
+        {c:"Ben otobüs durağında bekliyorum", s:"Espero en la parada", g:"Locativo"},
+
+        {c:"Biz pazara erken gidiyoruz", s:"Vamos temprano al mercado", g:"Dativo"},
+        {c:"O hastanede çalışıyor", s:"Trabaja en el hospital", g:"Locativo"},
+        {c:"Ben evde sıcak çorbayı içiyorum", s:"Bebo sopa en casa", g:"Locativo + acusativo"},
+        {c:"O okulda yeni arkadaşları buluyor", s:"Encuentra nuevos amigos", g:"Acusativo"},
+        {c:"Biz parkta güneşli havada oturuyoruz", s:"Nos sentamos en el parque", g:"Locativo"},
+        {c:"Ben çok kitap okuyorum", s:"Leo muchos libros", g:"Cantidad"},
+        {c:"O sessiz odada çalışıyor", s:"Trabaja en habitación silenciosa", g:"Locativo"},
+        {c:"Biz yeni dili öğreniyoruz", s:"Aprendemos el idioma nuevo", g:"Acusativo"},
+        {c:"Ben küçük köpeği seviyorum", s:"Acaricio al perro pequeño", g:"Acusativo"},
+        {c:"O büyük ağacı görüyor", s:"Ve el árbol grande", g:"Acusativo"},
+
+        {c:"Biz hızlı trenle gidiyoruz", s:"Vamos en tren rápido", g:"Instrumental"},
+        {c:"Ben evde yalnız çalışıyorum", s:"Trabajo solo en casa", g:"Locativo"},
+        {c:"O bana yardım ediyor", s:"Me ayuda", g:"Dativo"},
+        {c:"Ben ona kitap veriyorum", s:"Le doy libro", g:"Dativo"},
+        {c:"Biz öğretmene soruyu soruyoruz", s:"Preguntamos al profesor", g:"Dativo + acusativo"},
+        {c:"O bana yeni bir şey anlatıyor", s:"Me cuenta algo nuevo", g:"Dativo"},
+        {c:"Ben arkadaşımı arıyorum", s:"Llamo a mi amigo", g:"Acusativo"},
+        {c:"O telefonu açıyor", s:"Contesta el teléfono", g:"Acusativo"},
+        {c:"Biz kapıyı kapatıyoruz", s:"Cerramos la puerta", g:"Acusativo"},
+        {c:"Ben pencereyi açıyorum", s:"Abro la ventana", g:"Acusativo"}
+    ].map(x => ({
+        t: x.c.split(" "),
+        c: x.c,
+        s: x.s,
+        g: x.g
+    }));
+}
+
+let allSentences = getLogicalSentences();
+let currentIdx = 0;
+let userWords = [];
+let locked = false;
+
+function loadNewGame() {
+    currentIdx = Math.floor(Math.random() * allSentences.length);
+    renderGame();
+}
+
+function resetCurrent() {
+    renderGame();
+}
+
+function renderGame() {
+    locked = false;
+    userWords = [];
+    const item = allSentences[currentIdx];
+
+    document.getElementById('words-container').innerHTML = "";
+    document.getElementById('answer-zone').innerText = "";
+    document.getElementById('info-box').style.display = "none";
+
+    let shuffled = [...item.t].sort(() => Math.random() - 0.5);
+    shuffled.forEach(w => {
+        let span = document.createElement('div');
+        span.className = 'word';
+        span.innerText = w;
+        span.onclick = () => selectWord(w, span);
+        document.getElementById('words-container').appendChild(span);
+    });
+}
+
+function selectWord(w, el) {
+    if(locked) return;
+    userWords.push(w);
+    el.style.display = "none";
+    document.getElementById('answer-zone').innerText = userWords.join(" ");
+}
+
+function check() {
+    if (userWords.length === 0) return;
+
+    locked = true;
+    const item = allSentences[currentIdx];
+    const userStr = userWords.join(" ").toLowerCase();
+    const correctStr = item.c.toLowerCase();
+
+    const msg = document.getElementById('result-msg');
+    if(userStr === correctStr) {
+        msg.innerText = "✔ Doğru!";
+        msg.style.color = "#27ae60";
+    } else {
+        msg.innerText = "✘ Yanlış!";
+        msg.style.color = "#e74c3c";
+    }
+
+    document.getElementById('correct-text').innerText = item.c;
+    document.getElementById('trans-text').innerText = item.s;
+    document.getElementById('grammar-text').innerText = "💡 " + item.g;
+    document.getElementById('info-box').style.display = "block";
+speak(item.c);
+}
+
+loadNewGame();
+</script>
+
+</body>
+</html>

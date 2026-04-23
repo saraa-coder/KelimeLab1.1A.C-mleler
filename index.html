@@ -46,8 +46,10 @@
 let turkishVoice = null;
 
 function loadVoices() {
-    const voices = speechSynthesis.getVoices();
-    turkishVoice = voices.find(v => v.lang.startsWith("tr"));
+   const voices = speechSynthesis.getVoices();
+
+turkishVoice = voices.find(v => v.lang === "tr-TR") ||
+                voices.find(v => v.lang.startsWith("tr"));
 }
 
 speechSynthesis.onvoiceschanged = loadVoices;

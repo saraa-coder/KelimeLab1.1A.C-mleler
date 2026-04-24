@@ -18,6 +18,7 @@
         button:hover { opacity: 0.9; transform: scale(1.05); }
         #info-box { margin-top: 30px; padding: 20px; background: #f1f9ff; border-radius: 12px; display: none; text-align: left; animation: fadeIn 0.5s; }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        .verb-highlight { color: #e67e22; font-weight: bold; margin-top: 8px; font-size: 1.1em; }
     </style>
 </head>
 <body>
@@ -37,8 +38,9 @@
     <div id="info-box">
         <div id="result-msg" style="font-size: 20px; font-weight: bold; margin-bottom: 10px;"></div>
         <div style="color: #2980b9; font-weight: bold;">Original: <span id="correct-text"></span></div>
-        <div style="color: #7f8c8d; font-style: italic; margin-bottom: 15px;">Traducción: <span id="trans-text"></span></div>
-        <div id="grammar-text" style="font-size: 14px; color: #34495e; border-top: 1px solid #d1d8e0; padding-top: 10px;"></div>
+        <div style="color: #7f8c8d; font-style: italic; margin-bottom: 5px;">Traducción: <span id="trans-text"></span></div>
+        <div id="verb-text" class="verb-highlight"></div> 
+        <div id="grammar-text" style="font-size: 14px; color: #34495e; border-top: 1px solid #d1d8e0; padding-top: 10px; margin-top: 10px;"></div>
     </div>
 </div>
 
@@ -46,111 +48,99 @@
 let turkishVoice = null;
 
 function loadVoices() {
-   const voices = speechSynthesis.getVoices();
-
-turkishVoice = voices.find(v => v.lang === "tr-TR") ||
-                voices.find(v => v.lang.startsWith("tr"));
+    const voices = speechSynthesis.getVoices();
+    turkishVoice = voices.find(v => v.lang === "tr-TR") || voices.find(v => v.lang.startsWith("tr"));
 }
 
 speechSynthesis.onvoiceschanged = loadVoices;
 
 function speak(text) {
     const u = new SpeechSynthesisUtterance(text);
-    const voices = speechSynthesis.getVoices();
-
-    u.voice = voices.find(v => v.lang === "tr-TR") 
-           || voices.find(v => v.lang.startsWith("tr"));
-
     u.lang = "tr-TR";
-    u.rate = 0.75;
-
+    u.rate = 0.8;
     speechSynthesis.cancel();
     speechSynthesis.speak(u);
 }
 
 function getLogicalSentences() {
+    // Hemos añadido la propiedad "v" para el verbo en infinitivo
     return [
-        {c:"Ben her sabah okulda Türkçe dersini dikkatle dinliyorum", s:"Cada mañana escucho atentamente la clase de turco en la escuela", g:"Locativo + acusativo"},
-        {c:"Çocuklar parkta büyük kırmızı topu oynuyor", s:"Los niños juegan con la pelota roja grande en el parque", g:"Locativo + acusativo"},
-        {c:"Annem mutfakta lezzetli yemeği pişiriyor", s:"Mi madre cocina comida deliciosa en la cocina", g:"Locativo + acusativo"},
-        {c:"Biz akşamları evde televizyonu izliyoruz", s:"Vemos la televisión en casa por la noche", g:"Locativo + acusativo"},
-        {c:"O sabahları hızlıca okula gidiyor", s:"Va rápido a la escuela por la mañana", g:"Dativo"},
-        {c:"Ben pazardan taze ekmeği alıyorum", s:"Compro pan fresco en el mercado", g:"Ablativo + acusativo"},
-        {c:"Öğretmen sınıfta yeni kelimeleri yazıyor", s:"El profesor escribe palabras nuevas en clase", g:"Locativo + acusativo"},
-        {c:"Arkadaşım bana yeni kitabı veriyor", s:"Mi amigo me da el libro nuevo", g:"Dativo + acusativo"},
-        {c:"Biz parkta uzun süre yürüyoruz", s:"Caminamos mucho en el parque", g:"Locativo"},
-        {c:"O evde sessizce kitabı okuyor", s:"Lee el libro en casa en silencio", g:"Locativo + acusativo"},
-
-        {c:"Ben otobüste müzik dinliyorum", s:"Escucho música en el autobús", g:"Locativo"},
-        {c:"Öğrenciler kütüphanede ders çalışıyor", s:"Los estudiantes estudian en la biblioteca", g:"Locativo"},
-        {c:"Ben her gün işe otobüsle gidiyorum", s:"Voy al trabajo cada día", g:"Dativo"},
-        {c:"O akşamları filmi izliyor", s:"Ve la película por la noche", g:"Acusativo"},
-        {c:"Biz hafta sonu sinemaya gidiyoruz", s:"Vamos al cine el fin de semana", g:"Dativo"},
-        {c:"Ben yeni telefonu kullanıyorum", s:"Uso el teléfono nuevo", g:"Acusativo"},
-        {c:"O kırmızı elmayı yiyor", s:"Come la manzana roja", g:"Acusativo"},
-        {c:"Biz pazardan sebzeleri alıyoruz", s:"Compramos verduras en el mercado", g:"Ablativo + acusativo"},
-        {c:"Ben arkadaşımı okulda bekliyorum", s:"Espero a mi amigo en la escuela", g:"Acusativo"},
-        {c:"O evde yalnız kalıyor", s:"Se queda solo en casa", g:"Locativo"},
-
-        {c:"Biz yazın denizde yüzüyoruz", s:"Nadamos en el mar en verano", g:"Locativo"},
-        {c:"Ben kışın sıcak çayı içiyorum", s:"Bebo té caliente en invierno", g:"Acusativo"},
-        {c:"O çok güzel şarkıyı söylüyor", s:"Canta una canción muy bonita", g:"Acusativo"},
-        {c:"Ben hızlıca yazıyorum", s:"Escribo rápido", g:"Adverbio"},
-        {c:"Biz yavaşça konuşuyoruz", s:"Hablamos despacio", g:"Adverbio"},
-        {c:"O çok dikkatli çalışıyor", s:"Trabaja con atención", g:"Adverbio"},
-        {c:"Ben bugün biraz yorgunum", s:"Estoy un poco cansado hoy", g:"Tiempo"},
-        {c:"O çok mutlu görünüyor", s:"Parece muy feliz", g:"Adjetivo"},
-        {c:"Biz uzun yolu yürüyoruz", s:"Caminamos el camino largo", g:"Acusativo"},
-        {c:"Ben küçük evde yaşıyorum", s:"Vivo en una casa pequeña", g:"Locativo"},
-
-        {c:"O büyük şehirde çalışıyor", s:"Trabaja en la ciudad grande", g:"Locativo"},
-        {c:"Biz yeni arabayı görüyoruz", s:"Vemos el coche nuevo", g:"Acusativo"},
-        {c:"Ben okulda Türkçeyi öğreniyorum", s:"Aprendo turco en la escuela", g:"Acusativo"},
-        {c:"O evde yemeği pişiriyor", s:"Cocina en casa", g:"Acusativo"},
-        {c:"Biz parkta çocuklarla oynuyoruz", s:"Jugamos con niños", g:"Locativo"},
-        {c:"Ben arkadaşlarımla buluşuyorum", s:"Me encuentro con amigos", g:"Instrumental"},
-        {c:"O sinemada filmi izliyor", s:"Ve la película en el cine", g:"Locativo"},
-        {c:"Biz yaz tatilinde seyahat ediyoruz", s:"Viajamos en verano", g:"Tiempo"},
-        {c:"Kahvaltıda bazen ekmek yiyorum", s:"A veces como pan en el desayuno", g:"Locativo + adverbio de frecuencia"},
-        {c:"O akşamları kitabı okuyor", s:"Lee el libro por la noche", g:"Acusativo"},
-
-        {c:"Biz hafta içi çalışıyoruz", s:"Trabajamos entre semana", g:"Tiempo"},
-        {c:"Ben hafta sonu dinleniyorum", s:"Descanso el fin de semana", g:"Tiempo"},
-        {c:"O hızlı arabayı kullanıyor", s:"Conduce el coche rápido", g:"Acusativo"},
-        {c:"Ben yeni cüzdanı alıyorum", s:"Compro la cartera nueva", g:"Acusativo"},
-        {c:"Biz güzel bahçede oturuyoruz", s:"Nos sentamos en el jardín bonito", g:"Locativo"},
-        {c:"O büyük problemi çözüyor", s:"Resuelve el problema", g:"Acusativo"},
-        {c:"Ben küçük defteri kullanıyorum", s:"Uso el cuaderno pequeño", g:"Acusativo"},
-        {c:"Biz uzun toplantıya katılıyoruz", s:"Asistimos a reunión larga", g:"Dativo"},
-        {c:"O okuldan eve yürüyor", s:"Va de escuela a casa", g:"Ablativo + dativo"},
-        {c:"Ben otobüs durağında bekliyorum", s:"Espero en la parada", g:"Locativo"},
-
-        {c:"Biz pazara erken gidiyoruz", s:"Vamos temprano al mercado", g:"Dativo"},
-        {c:"O hastanede çalışıyor", s:"Trabaja en el hospital", g:"Locativo"},
-        {c:"Bugün çok sıcak bir çorba içeceğim", s:"Hoy voy a tomar una sopa muy caliente", g:"Futuro + adverbio de tiempo"},
-        {c:"O okulda yeni arkadaşları buluyor", s:"Encuentra nuevos amigos", g:"Acusativo"},
-        {c:"Biz parkta güneşli havada oturuyoruz", s:"Nos sentamos en el parque", g:"Locativo"},
-        {c:"Ben çok kitap okuyorum", s:"Leo muchos libros", g:"Cantidad"},
-        {c:"O sessiz odada çalışıyor", s:"Trabaja en habitación silenciosa", g:"Locativo"},
-        {c:"Biz yeni dili öğreniyoruz", s:"Aprendemos el idioma nuevo", g:"Acusativo"},
-        {c:"Ben küçük köpeği seviyorum", s:"Acaricio al perro pequeño", g:"Acusativo"},
-        {c:"O büyük ağacı görüyor", s:"Ve el árbol grande", g:"Acusativo"},
-
-        {c:"Biz hızlı trenle gidiyoruz", s:"Vamos en tren rápido", g:"Instrumental"},
-        {c:"Ben evde yalnız çalışıyorum", s:"Trabajo solo en casa", g:"Locativo"},
-        {c:"O bana yardım ediyor", s:"Me ayuda", g:"Dativo"},
-        {c:"Ben ona kitap veriyorum", s:"Le doy libro", g:"Dativo"},
-        {c:"Biz öğretmene soruyu soruyoruz", s:"Preguntamos al profesor", g:"Dativo + acusativo"},
-        {c:"O bana yeni bir şey anlatıyor", s:"Me cuenta algo nuevo", g:"Dativo"},
-        {c:"Ben arkadaşımı arıyorum", s:"Llamo a mi amigo", g:"Acusativo"},
-        {c:"O telefonu açıyor", s:"Contesta el teléfono", g:"Acusativo"},
-        {c:"Biz kapıyı kapatıyoruz", s:"Cerramos la puerta", g:"Acusativo"},
-        {c:"Ben pencereyi açıyorum", s:"Abro la ventana", g:"Acusativo"}
+        {c:"Ben her sabah okulda Türkçe dersini dikkatle dinliyorum", s:"Cada mañana escucho atentamente la clase de turco en la escuela", g:"Locativo + acusativo", v: "dinlemek: escuchar"},
+        {c:"Çocuklar parkta büyük kırmızı topu oynuyor", s:"Los niños juegan con la pelota roja grande en el parque", g:"Locativo + acusativo", v: "oynamak: jugar"},
+        {c:"Annem mutfakta lezzetli yemeği pişiriyor", s:"Mi madre cocina comida deliciosa en la cocina", g:"Locativo + acusativo", v: "pişirmek: cocinar"},
+        {c:"Biz akşamları evde televizyonu izliyoruz", s:"Vemos la televisión en casa por la noche", g:"Locativo + acusativo", v: "izlemek: ver/mirar"},
+        {c:"O sabahları hızlıca okula gidiyor", s:"Va rápido a la escuela por la mañana", g:"Dativo", v: "gitmek: ir"},
+        {c:"Ben pazardan taze ekmeği alıyorum", s:"Compro pan fresco en el mercado", g:"Ablativo + acusativo", v: "almak: comprar/tomar"},
+        {c:"Öğretmen sınıfta yeni kelimeleri yazıyor", s:"El profesor escribe palabras nuevas en clase", g:"Locativo + acusativo", v: "yazmak: escribir"},
+        {c:"Arkadaşım bana yeni kitabı veriyor", s:"Mi amigo me da el libro nuevo", g:"Dativo + acusativo", v: "vermek: dar"},
+        {c:"Biz parkta uzun süre yürüyoruz", s:"Caminamos mucho en el parque", g:"Locativo", v: "yürümek: caminar"},
+        {c:"O evde sessizce kitabı okuyor", s:"Lee el libro en casa en silencio", g:"Locativo + acusativo", v: "okumak: leer"},
+        {c:"Ben otobüste müzik dinliyorum", s:"Escucho música en el autobús", g:"Locativo", v: "dinlemek: escuchar"},
+        {c:"Öğrenciler kütüphanede ders çalışıyor", s:"Los estudiantes estudian en la biblioteca", g:"Locativo", v: "ders çalışmak: estudiar"},
+        {c:"Ben her gün işe otobüsle gidiyorum", s:"Voy al trabajo cada día", g:"Dativo", v: "gitmek: ir"},
+        {c:"O akşamları filmi izliyor", s:"Ve la película por la noche", g:"Acusativo", v: "izlemek: ver"},
+        {c:"Biz hafta sonu sinemaya gidiyoruz", s:"Vamos al cine el fin de semana", g:"Dativo", v: "gitmek: ir"},
+        {c:"Ben yeni telefonu kullanıyorum", s:"Uso el teléfono nuevo", g:"Acusativo", v: "kullanmak: usar"},
+        {c:"O kırmızı elmayı yiyor", s:"Come la manzana roja", g:"Acusativo", v: "yemek: comer"},
+        {c:"Biz pazardan sebzeleri alıyoruz", s:"Compramos verduras en el mercado", g:"Ablativo + acusativo", v: "almak: comprar"},
+        {c:"Ben arkadaşımı okulda bekliyorum", s:"Espero a mi amigo en la escuela", g:"Acusativo", v: "beklemek: esperar"},
+        {c:"O evde yalnız kalıyor", s:"Se queda solo en casa", g:"Locativo", v: "kalmak: quedarse"},
+        {c:"Biz yazın denizde yüzüyoruz", s:"Nadamos en el mar en verano", g:"Locativo", v: "yüzmek: nadar"},
+        {c:"Ben kışın sıcak çayı içiyorum", s:"Bebo té caliente en invierno", g:"Acusativo", v: "içmek: beber"},
+        {c:"O çok güzel şarkıyı söylüyor", s:"Canta una canción muy bonita", g:"Acusativo", v: "şarkı söylemek: cantar"},
+        {c:"Ben hızlıca yazıyorum", s:"Escribo rápido", g:"Adverbio", v: "yazmak: escribir"},
+        {c:"Biz yavaşça konuşuyoruz", s:"Hablamos despacio", g:"Adverbio", v: "konuşmak: hablar"},
+        {c:"O çok dikkatli çalışıyor", s:"Trabaja con atención", g:"Adverbio", v: "çalışmak: trabajar"},
+        {c:"Ben bugün biraz yorgunum", s:"Estoy un poco cansado hoy", g:"Tiempo", v: "yorgun olmak: estar cansado"},
+        {c:"O çok mutlu görünüyor", s:"Parece muy feliz", g:"Adjetivo", v: "görünmek: parecer"},
+        {c:"Biz uzun yolu yürüyoruz", s:"Caminamos el camino largo", g:"Acusativo", v: "yürümek: caminar"},
+        {c:"Ben küçük evde yaşıyorum", s:"Vivo en una casa pequeña", g:"Locativo", v: "yaşamak: vivir"},
+        {c:"O büyük şehirde çalışıyor", s:"Trabaja en la ciudad grande", g:"Locativo", v: "çalışmak: trabajar"},
+        {c:"Biz yeni arabayı görüyoruz", s:"Vemos el coche nuevo", g:"Acusativo", v: "görmek: ver"},
+        {c:"Ben okulda Türkçeyi öğreniyorum", s:"Aprendo turco en la escuela", g:"Acusativo", v: "öğrenmek: aprender"},
+        {c:"O evde yemeği pişiriyor", s:"Cocina en casa", g:"Acusativo", v: "pişirmek: cocinar"},
+        {c:"Biz parkta çocuklarla oynuyoruz", s:"Jugamos con niños", g:"Locativo", v: "oynamak: jugar"},
+        {c:"Ben arkadaşlarımla buluşuyorum", s:"Me encuentro con amigos", g:"Instrumental", v: "buluşmak: encontrarse"},
+        {c:"O sinemada filmi izliyor", s:"Ve la película en el cine", g:"Locativo", v: "izlemek: ver"},
+        {c:"Biz yaz tatilinde seyahat ediyoruz", s:"Viajamos en verano", g:"Tiempo", v: "seyahat etmek: viajar"},
+        {c:"Kahvaltıda bazen ekmek yiyorum", s:"A veces como pan en el desayuno", g:"Locativo + adverbio", v: "yemek: comer"},
+        {c:"O akşamları kitabı okuyor", s:"Lee el libro por la noche", g:"Acusativo", v: "okumak: leer"},
+        {c:"Biz hafta içi çalışıyoruz", s:"Trabajamos entre semana", g:"Tiempo", v: "çalışmak: trabajar"},
+        {c:"Ben hafta sonu dinleniyorum", s:"Descanso el fin de semana", g:"Tiempo", v: "dinlenmek: descansar"},
+        {c:"O hızlı arabayı kullanıyor", s:"Conduce el coche rápido", g:"Acusativo", v: "kullanmak: usar/conducir"},
+        {c:"Ben yeni cüzdanı alıyorum", s:"Compro la cartera nueva", g:"Acusativo", v: "almak: comprar"},
+        {c:"Biz güzel bahçede oturuyoruz", s:"Nos sentamos en el jardín bonito", g:"Locativo", v: "oturmak: sentarse/vivir"},
+        {c:"O büyük problemi çözüyor", s:"Resuelve el problema", g:"Acusativo", v: "çözmek: resolver"},
+        {c:"Ben küçük defteri kullanıyorum", s:"Uso el cuaderno pequeño", g:"Acusativo", v: "kullanmak: usar"},
+        {c:"Biz uzun toplantıya katılıyoruz", s:"Asistimos a reunión larga", g:"Dativo", v: "katılmak: participar/asistir"},
+        {c:"O okuldan eve yürüyor", s:"Va de escuela a casa", g:"Ablativo + dativo", v: "yürümek: caminar"},
+        {c:"Ben otobüs durağında bekliyorum", s:"Espero en la parada", g:"Locativo", v: "beklemek: esperar"},
+        {c:"Biz pazara erken gidiyoruz", s:"Vamos temprano al mercado", g:"Dativo", v: "gitmek: ir"},
+        {c:"O hastanede çalışıyor", s:"Trabaja en el hospital", g:"Locativo", v: "çalışmak: trabajar"},
+        {c:"Bugün çok sıcak bir çorba içeceğim", s:"Hoy voy a tomar una sopa muy caliente", g:"Futuro", v: "içmek: beber/tomar"},
+        {c:"O okulda yeni arkadaşları buluyor", s:"Encuentra nuevos amigos", g:"Acusativo", v: "bulmak: encontrar"},
+        {c:"Biz parkta güneşli havada oturuyoruz", s:"Nos sentamos en el parque", g:"Locativo", v: "oturmak: sentarse"},
+        {c:"Ben çok kitap okuyorum", s:"Leo muchos libros", g:"Cantidad", v: "okumak: leer"},
+        {c:"O sessiz odada çalışıyor", s:"Trabaja en habitación silenciosa", g:"Locativo", v: "çalışmak: trabajar"},
+        {c:"Biz yeni dili öğreniyoruz", s:"Aprendemos el idioma nuevo", g:"Acusativo", v: "öğrenmek: aprender"},
+        {c:"Ben küçük köpeği seviyorum", s:"Amo/Quiero al perro pequeño", g:"Acusativo", v: "sevmek: amar/querer"},
+        {c:"O büyük ağacı görüyor", s:"Ve el árbol grande", g:"Acusativo", v: "görmek: ver"},
+        {c:"Biz hızlı trenle gidiyoruz", s:"Vamos en tren rápido", g:"Instrumental", v: "gitmek: ir"},
+        {c:"Ben evde yalnız çalışıyorum", s:"Trabajo solo en casa", g:"Locativo", v: "çalışmak: trabajar"},
+        {c:"O bana yardım ediyor", s:"Me ayuda", g:"Dativo", v: "yardım etmek: ayudar"},
+        {c:"Ben ona kitap veriyorum", s:"Le doy libro", g:"Dativo", v: "vermek: dar"},
+        {c:"Biz öğretmene soruyu soruyoruz", s:"Preguntamos al profesor", g:"Dativo + acusativo", v: "sormak: preguntar"},
+        {c:"O bana yeni bir şey anlatıyor", s:"Me cuenta algo nuevo", g:"Dativo", v: "anlatmak: contar/explicar"},
+        {c:"Ben arkadaşımı arıyorum", s:"Llamo a mi amigo", g:"Acusativo", v: "aramak: llamar/buscar"},
+        {c:"O telefonu açıyor", s:"Contesta el teléfono", g:"Acusativo", v: "açmak: abrir/contestar"},
+        {c:"Biz kapıyı kapatıyoruz", s:"Cerramos la puerta", g:"Acusativo", v: "kapatmak: cerrar"},
+        {c:"Ben pencereyi açıyorum", s:"Abro la ventana", g:"Acusativo", v: "açmak: abrir"}
     ].map(x => ({
         t: x.c.split(" "),
         c: x.c,
         s: x.s,
-        g: x.g
+        g: x.g,
+        v: x.v // Guardamos el verbo
     }));
 }
 
@@ -213,9 +203,10 @@ function check() {
 
     document.getElementById('correct-text').innerText = item.c;
     document.getElementById('trans-text').innerText = item.s;
+    document.getElementById('verb-text').innerText = "📖 " + item.v; // Mostramos el verbo
     document.getElementById('grammar-text').innerText = "💡 " + item.g;
     document.getElementById('info-box').style.display = "block";
-speak(item.c);
+    speak(item.c);
 }
 
 loadNewGame();
